@@ -1,0 +1,23 @@
+services:
+  - name: slotserve
+    type: web
+    runtime: python
+    plan: standard # 2 GB RAM. free/starter (512 MB) will OOM: fp32 model
+      # weights for SmolLM2-135M-Instruct alone are ~513 MB, before
+      # torch/transformers overhead or the KV cache.
+    region: oregon
+    branch: main
+    buildCommand: >-
+      pip install torch --index-url https://download.pytorch.org/whl/cpu &&
+      pip install -r requirements.txt
+    startCommand: >-
+      python -m src.server.app
+      --model HuggingFaceTB/SmolLM2-135M-Instruct
+      --host 0.0.0.0
+      --port $PORT
+      --max-slots 4
+      --max-seq-len 512
+    healthCheckPath: /health
+    envVars:
+      - key: HF_HUB_DISABLE_SYMLINKS_WARNING
+        value: "1"
