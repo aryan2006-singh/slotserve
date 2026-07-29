@@ -1,0 +1,23 @@
+# Verified working set. The engine touches private-ish parts of the
+# transformers cache API (CacheLayerMixin), which has changed shape across major
+# versions — so pin it, and re-run `pytest tests/` before bumping.
+torch>=2.4,<3
+transformers>=5.0,<6
+tokenizers>=0.20
+safetensors>=0.4
+accelerate>=0.34
+
+# Server
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+
+# Benchmarking
+aiohttp>=3.9
+
+# Tests
+pytest>=8.0
+httpx>=0.27
+
+# Optional — quantization. CUDA only; there are no CPU kernels.
+# bitsandbytes>=0.43
