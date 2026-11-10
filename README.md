@@ -3,12 +3,15 @@
 An LLM inference server with **token-level continuous batching**, built on a
 slot-addressed KV cache instead of HuggingFace's `DynamicCache`.
 
-> **Headline (fill in with your own run):** _N.NNx_ higher output throughput than
-> static batching on a heavy-tailed workload, with byte-identical greedy output —
-> verified against HuggingFace `generate()` by a 27-test suite.
+> **Headline:** in a reference run, continuous batching gave **2.73x** the output
+> throughput of static batching (238.8 → 651.5 tok/s) on a heavy-tailed workload,
+> with byte-identical greedy output, verified against HuggingFace `generate()` by
+> a 27-test suite. Reproduce with `make compare-tiny`.
 >
-> Reference run on 4 CPU threads, 24 requests, 6-layer model:
-> **238.8 → 651.5 tok/s (2.73x)**. Reproduce with `make compare-tiny`.
+> **Scope of that number:** 4 CPU threads, 24 requests, a small 6-layer
+> random-weight model. It isolates the scheduling gain; it is not a GPU or
+> real-model benchmark. Real-model results (`make bench`, which generates
+> `BENCHMARKS.md`) are not committed yet.
 
 ```
 ┌──────────┐   HTTP    ┌───────────────┐  thread   ┌──────────────────────┐
