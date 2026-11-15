@@ -109,3 +109,25 @@ class Scheduler:
 
     def slot_utilization(self) -> float:
         return 1.0 - len(self.free_slots) / self.max_slots
+
+    def slot_snapshot(self) -> list[dict | None]:
+        """One entry per physical slot: who holds it and how full it is.
+
+        Read from the server thread while the engine thread mutates state, so
+        copy the list first and tolerate a request finishing mid-read. The
+        result is for display only; it can be one step stale.
+        """
+        slots: list[dict | None] = [None] * self.max_slots
+        for req in list(self.running):
+            slot = req.slot
+            if slot is None or not 0 <= slot < self.max_slots:
+                continue
+            slots[slot] = {
+                "request_id": req.request_id,
+                "status": req.status.value,
+                "prompt_tokens": req.prompt_len,
+                "generated": req.num_generated,
+                "max_tokens": req.params.max_tokens,
+                "seq_len": req.seq_len,
+            }
+        return slots

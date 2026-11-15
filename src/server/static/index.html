@@ -89,6 +89,7 @@
     padding: 1rem 0.85rem;
     gap: 1.25rem;
     transition: margin-left 0.2s ease;
+    overflow-y: auto;
   }
   .brand {
     display: flex;
@@ -156,6 +157,49 @@
     color: var(--text-faint);
     margin-top: 0.1rem;
   }
+
+  .slot-list { display: flex; flex-direction: column; gap: 0.3rem; padding: 0 0.4rem; }
+  .slot-row {
+    display: grid;
+    grid-template-columns: 1.6rem 1fr 3.6rem;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-faint);
+  }
+  .slot-row .id { font-family: var(--font-mono); }
+  .slot-row .n { text-align: right; font-family: var(--font-mono); }
+  .slot-track {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .slot-fill {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    border-radius: 999px;
+    transition: width 0.25s ease;
+  }
+  .slot-row.busy { color: var(--text-muted); }
+  .slot-row.prefill .slot-fill { width: 100% !important; background: var(--accent-soft); }
+  .queue-line {
+    display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
+    min-height: 1rem; font-size: 0.7rem; color: var(--text-faint);
+    padding: 0 0.4rem;
+  }
+  .queue-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+  .side-hint { font-size: 0.7rem; line-height: 1.4; color: var(--text-faint); padding: 0 0.15rem; }
+  #burst {
+    font: inherit; font-size: 0.78rem; cursor: pointer;
+    padding: 0.5rem 0.7rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  }
+  #burst:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
+  #burst:disabled { opacity: 0.6; cursor: default; }
 
   .param-row {
     display: flex;
@@ -524,6 +568,14 @@
     </div>
 
     <div class="side-section">
+      <div class="side-label">Slots</div>
+      <div class="slot-list" id="slot-list"></div>
+      <div class="queue-line" id="queue-line"></div>
+      <button id="burst" type="button">Send 8 test requests at once</button>
+      <div class="side-hint" id="burst-hint">Each bar is one KV cache slot. Watch requests join a free slot the moment another finishes.</div>
+    </div>
+
+    <div class="side-section">
       <div class="side-label">Sampling</div>
       <div class="param-row">
         <div class="row-top"><span>temperature</span><b id="v-temperature">0.70</b></div>
@@ -761,13 +813,97 @@
       statGrid.querySelector('[data-k="waiting"]').textContent = s.waiting;
       statGrid.querySelector('[data-k="tps"]').textContent = Math.round(s.tokens_per_second ?? 0);
       statGrid.querySelector('[data-k="kv"]').textContent = `${Math.round(s.kv_cache_mb)} MB`;
+      renderSlots(s);
+      return s;
     } catch { /* not up yet */ }
   }
 
+  // ---------------------------------------------------------------- slots
+  const slotList = el("slot-list");
+  const queueLine = el("queue-line");
+  const burstBtn = el("burst");
+  const burstHint = el("burst-hint");
+
+  function renderSlots(s) {
+    const slots = Array.isArray(s.slots) ? s.slots : [];
+    if (slotList.children.length !== slots.length) {
+      slotList.innerHTML = slots.map((_, i) =>
+        `<div class="slot-row"><span class="id">#${i}</span>` +
+        `<div class="slot-track"><div class="slot-fill"></div></div>` +
+        `<span class="n">free</span></div>`).join("");
+    }
+    slots.forEach((slot, i) => {
+      const row = slotList.children[i];
+      const fill = row.querySelector(".slot-fill");
+      const label = row.querySelector(".n");
+      if (!slot) {
+        row.className = "slot-row";
+        fill.style.width = "0";
+        label.textContent = "free";
+        return;
+      }
+      const prefill = slot.status === "prefill";
+      row.className = "slot-row busy" + (prefill ? " prefill" : "");
+      const pct = Math.min(100, (slot.generated / Math.max(1, slot.max_tokens)) * 100);
+      fill.style.width = `${Math.max(pct, 3)}%`;
+      label.textContent = prefill ? "prefill" : `${slot.generated}/${slot.max_tokens}`;
+    });
+    const waiting = s.waiting || 0;
+    queueLine.innerHTML = waiting
+      ? `<span>queue</span>` + '<span class="queue-dot"></span>'.repeat(Math.min(waiting, 24)) +
+        (waiting > 24 ? `<span>+${waiting - 24}</span>` : "")
+      : "";
+  }
+
+  const BURST_PROMPTS = [
+    "Explain what a KV cache is.",
+    "List three uses of a GPU.",
+    "Write one sentence about batching.",
+    "What is a token?",
+    "Describe a queue in computing.",
+    "Say hello in five languages.",
+    "Why do long requests slow down short ones?",
+    "Summarize continuous batching.",
+  ];
+
+  async function runBurst() {
+    burstBtn.disabled = true;
+    const n = BURST_PROMPTS.length;
+    burstHint.textContent = `Sending ${n} requests with different lengths...`;
+    const started = performance.now();
+    const jobs = BURST_PROMPTS.map((prompt, i) =>
+      fetch("/v1/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // Mixed short and long outputs: the long ones hold their slot while
+        // short ones finish and hand the slot to the next queued request.
+        body: JSON.stringify({ prompt, max_tokens: i % 3 === 0 ? 160 : 24 + i * 6, temperature: 0.7 }),
+      }).then((r) => r.ok).catch(() => false));
+    kickPoll();
+    const results = await Promise.all(jobs);
+    const ok = results.filter(Boolean).length;
+    const secs = ((performance.now() - started) / 1000).toFixed(1);
+    burstHint.textContent = `${ok}/${n} requests finished in ${secs}s, sharing the slots above.`;
+    burstBtn.disabled = false;
+  }
+  burstBtn.addEventListener("click", runBurst);
+
+  // Poll fast while anything is in flight so the slot bars move smoothly,
+  // and back off when idle.
+  let pollTimer = null;
+  async function pollStats() {
+    clearTimeout(pollTimer);
+    const s = await refreshStats();
+    const busy = s && (s.running > 0 || s.waiting > 0);
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(pollStats, busy || burstBtn.disabled ? 250 : 1500);
+  }
+  // Skip the idle wait when we know work just started.
+  const kickPoll = () => setTimeout(pollStats, 60);
+
   refreshHealth();
-  refreshStats();
+  pollStats();
   setInterval(refreshHealth, 5000);
-  setInterval(refreshStats, 1500);
 
   // -------------------------------------------------------------- sending
   function setBusy(busy) {
@@ -804,6 +940,7 @@
     let full = "";
 
     try {
+      kickPoll();
       const res = await fetch("/v1/chat/completions", {
         method: "POST",
         headers: { "content-type": "application/json" },
