@@ -136,3 +136,35 @@ def test_stats_shape(client):
         assert key in stats
     assert stats["running"] == 0
     assert torch.is_tensor(torch.tensor(0))  # sanity: torch imported fine
+
+
+def test_stats_reports_every_slot(client):
+    stats = client.get("/stats").json()
+    assert stats["max_slots"] == 4
+    assert stats["max_seq_len"] == 256
+    assert stats["slots"] == [None, None, None, None]
+
+
+def test_slot_snapshot_tracks_occupancy():
+    from src.engine.request import Request
+    from src.engine.sampling import SamplingParams
+    from src.engine.scheduler import Scheduler
+
+    sched = Scheduler(max_slots=3, max_seq_len=64, max_prefills_per_step=3)
+    reqs = [Request(f"r{i}", [1, 2, 3], SamplingParams(max_tokens=10)) for i in range(2)]
+    for r in reqs:
+        sched.add(r)
+    sched.admit()
+    reqs[0].output_token_ids.extend([4, 5])
+
+    snap = sched.slot_snapshot()
+    assert len(snap) == 3
+    by_id = {s["request_id"]: s for s in snap if s}
+    assert set(by_id) == {"r0", "r1"}
+    assert by_id["r0"]["generated"] == 2 and by_id["r0"]["seq_len"] == 5
+    assert by_id["r0"]["max_tokens"] == 10
+    assert snap.count(None) == 1
+
+    reqs[0].status = reqs[0].status.FINISHED
+    sched.retire_finished()
+    assert [s["request_id"] for s in sched.slot_snapshot() if s] == ["r1"]

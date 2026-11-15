@@ -216,6 +216,28 @@ decode step.
 
 ---
 
+## Web demo and free hosting
+
+`make serve` also serves a chat UI at `http://localhost:8000/`. The sidebar
+shows every KV cache slot live: press **Send 8 test requests at once** and watch
+short requests finish and hand their slot to the next queued request while
+long ones keep running. That is continuous batching, visible.
+
+To host it for free on a [Hugging Face Space](https://huggingface.co/new-space)
+(free "CPU basic" hardware, 2 vCPU / 16 GB RAM):
+
+1. Create a new Space and pick **Docker** as the SDK, blank template.
+2. Upload the two files in `deploy/huggingface-space/` (`Dockerfile` and
+   `README.md`) to the Space.
+3. Wait for the build. The Dockerfile clones this repo and downloads
+   SmolLM2-135M-Instruct, so the Space needs nothing else.
+
+Free Spaces sleep after a period of inactivity and take a minute to wake up.
+Note that `render.yaml` targets Render's paid "standard" plan; Render's free
+plan does not have enough memory for this model.
+
+---
+
 ## Layout
 
 ```
@@ -230,6 +252,9 @@ src/server/
   app.py          FastAPI, OpenAI-compatible, SSE streaming
   async_engine.py thread bridge between the blocking loop and asyncio
   metrics.py      Prometheus histograms with serving-appropriate buckets
+  static/         chat UI with a live per-slot view, served at /
+deploy/
+  huggingface-space/  Dockerfile + Space card for free hosting
 bench/
   offline_compare.py  sequential vs static vs continuous (no server, no GPU)
   load_test.py        open/closed-loop HTTP load generator

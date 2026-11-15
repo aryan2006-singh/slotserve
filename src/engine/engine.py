@@ -252,4 +252,7 @@ class LLMEngine:
             "prefill_time_s": round(self.total_prefill_time, 3),
             "decode_time_s": round(self.total_decode_time, 3),
             "kv_cache_mb": round(self.cache.bytes_allocated() / 2**20, 1),
+            "max_slots": self.scheduler.max_slots,
+            "max_seq_len": self.scheduler.max_seq_len,
+            "slots": self.scheduler.slot_snapshot(),
         }
