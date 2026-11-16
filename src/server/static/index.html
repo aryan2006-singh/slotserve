@@ -10,6 +10,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Vendored, free libraries: GSAP 3.12.5 (GreenSock standard no-charge license) and
+     Three.js r160 (MIT). Served locally so the page works without a CDN. -->
+<script src="vendor/gsap.min.js"></script>
 <script>
   // Apply the saved theme before first paint so there is no flash.
   try {
@@ -21,18 +24,22 @@
   /* ----------------------------------------------------------- tokens */
   :root {
     color-scheme: light;
-    --bg: #ffff57;            /* signal yellow */
-    --ink: #0a0a0a;
-    --ink-2: #3a3a2a;
-    --ink-3: #6b6b4e;
-    --rule: #0a0a0a;
-    --soft: rgba(10, 10, 10, 0.07);
-    --soft-2: rgba(10, 10, 10, 0.13);
-    --inverse-bg: #0a0a0a;
-    --inverse-ink: #ffff57;
-    --prefill: #ff5c39;
-    --danger: #d4161c;
-    --good: #0a0a0a;
+    --bg: #f3efe4;            /* warm paper; yellow is now an accent only */
+    --ink: #151412;
+    --ink-2: #45423a;
+    --ink-3: #7c776a;
+    --rule: #151412;
+    --soft: rgba(21, 20, 18, 0.06);
+    --soft-2: rgba(21, 20, 18, 0.12);
+    --inverse-bg: #151412;
+    --inverse-ink: #f3efe4;
+    --accent: #f2d64b;        /* muted butter yellow */
+    --accent-ink: #151412;
+    --prefill: #e8623f;
+    --danger: #c8261d;
+    --good: #2e9e5b;
+    --box: #e6dfcd;           /* 3D field */
+    --box-hi: #f2d64b;
     --font: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
     --line: 2px;
@@ -42,34 +49,42 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
-      --bg: #0b0b0a;
-      --ink: #f3f3e6;
-      --ink-2: #c9c9b6;
-      --ink-3: #8b8b78;
-      --rule: #f3f3e6;
-      --soft: rgba(243, 243, 230, 0.07);
-      --soft-2: rgba(243, 243, 230, 0.14);
-      --inverse-bg: #ffff57;
-      --inverse-ink: #0a0a0a;
-      --prefill: #ff7a5c;
-      --danger: #ff5a5f;
-      --good: #ffff57;
+      --bg: #11110f;
+      --ink: #ecebe3;
+      --ink-2: #bdbab0;
+      --ink-3: #85827a;
+      --rule: #3a3833;
+      --soft: rgba(236, 235, 227, 0.06);
+      --soft-2: rgba(236, 235, 227, 0.12);
+      --inverse-bg: #ecebe3;
+      --inverse-ink: #11110f;
+      --accent: #e3c94a;
+      --accent-ink: #11110f;
+      --prefill: #f07a5a;
+      --danger: #ff6b62;
+      --good: #6fd08f;
+      --box: #2a2925;
+      --box-hi: #e3c94a;
     }
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #0b0b0a;
-    --ink: #f3f3e6;
-    --ink-2: #c9c9b6;
-    --ink-3: #8b8b78;
-    --rule: #f3f3e6;
-    --soft: rgba(243, 243, 230, 0.07);
-    --soft-2: rgba(243, 243, 230, 0.14);
-    --inverse-bg: #ffff57;
-    --inverse-ink: #0a0a0a;
-    --prefill: #ff7a5c;
-    --danger: #ff5a5f;
-    --good: #ffff57;
+    --bg: #11110f;
+    --ink: #ecebe3;
+    --ink-2: #bdbab0;
+    --ink-3: #85827a;
+    --rule: #3a3833;
+    --soft: rgba(236, 235, 227, 0.06);
+    --soft-2: rgba(236, 235, 227, 0.12);
+    --inverse-bg: #ecebe3;
+    --inverse-ink: #11110f;
+    --accent: #e3c94a;
+    --accent-ink: #11110f;
+    --prefill: #f07a5a;
+    --danger: #ff6b62;
+    --good: #6fd08f;
+    --box: #2a2925;
+    --box-hi: #e3c94a;
   }
 
   /* ------------------------------------------------------------- base */
@@ -90,7 +105,7 @@
   button { cursor: pointer; }
   a { color: inherit; }
   :focus-visible { outline: var(--line) solid var(--ink); outline-offset: 3px; }
-  ::selection { background: var(--inverse-bg); color: var(--inverse-ink); }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--soft-2); border-radius: 10px; border: 2px solid var(--bg); }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -134,8 +149,6 @@
   .dot.ok { background: var(--good); animation: pulse 2s ease-in-out infinite; }
   .dot.bad { background: var(--danger); }
   @keyframes pulse { 50% { opacity: 0.35; } }
-  :root:not([data-theme="dark"]) .dot.ok { background: #0a0a0a; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dot.ok { background: #ffff57; } }
 
   nav { display: flex; align-items: center; gap: clamp(0.4rem, 1.8vw, 2rem); }
   .nav-btn {
@@ -169,8 +182,36 @@
 
   /* ------------------------------------------------------------ shell */
   #shell { flex: 1; min-height: 0; display: flex; position: relative; }
-  #main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
-  #scroll-region { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+  #main { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  #scroll-region { flex: 1; overflow-y: auto; scroll-behavior: smooth; position: relative; z-index: 1; }
+  #composer-wrap { z-index: 2; }
+  /* WebGL slot field (Three.js). Purely decorative; the page works without it. */
+  #field {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    display: block;
+  }
+  .field-caption {
+    position: absolute;
+    right: clamp(16px, 3vw, 40px);
+    bottom: 7.2rem;
+    z-index: 1;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-3);
+    pointer-events: none;
+    text-align: right;
+    line-height: 1.5;
+    padding: 0.3rem 0.55rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+  }
+  body.chatting .field-caption { display: none; }
   #thread {
     max-width: 860px;
     margin: 0 auto;
@@ -197,7 +238,19 @@
     font-weight: 500;
     margin: 0 0 1.6rem;
   }
-  .hero em { font-style: normal; font-weight: 700; }
+  .hero em { font-style: normal; font-weight: 700; position: relative; white-space: nowrap; }
+  .hero em::before {
+    content: "";
+    position: absolute;
+    left: -0.06em; right: -0.06em; bottom: 0.06em;
+    height: 0.34em;
+    background: var(--accent);
+    z-index: -1;
+    transform-origin: left;
+    transform: scaleX(var(--mark, 1));
+  }
+  .hero .w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+  .hero .w > span { display: inline-block; will-change: transform; }
   .lede {
     font-size: clamp(1rem, 1.3vw, 1.15rem);
     line-height: 1.5;
@@ -212,7 +265,12 @@
     padding: 0.08em 0.38em;
     border-radius: 6px;
   }
-  .suggestions { border-top: var(--line) solid var(--rule); }
+  .suggestions {
+    border-top: var(--line) solid var(--rule);
+    background: color-mix(in srgb, var(--bg) 78%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
   .suggestion {
     width: 100%;
     display: grid;
@@ -231,7 +289,7 @@
   }
   .suggestion .n { font-family: var(--mono); font-size: 0.8rem; color: var(--ink-3); }
   .suggestion .arrow { font-size: 1.3rem; transition: transform 0.15s ease; }
-  .suggestion:hover { background: var(--soft); padding-left: 0.75rem; }
+  .suggestion:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); padding-left: 0.75rem; }
   .suggestion:hover .arrow { transform: translate(3px, -3px); }
 
   /* ------------------------------------------------------------- turns */
@@ -488,8 +546,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--inverse-bg);
-    color: var(--inverse-ink);
+    background: var(--accent);
+    color: var(--accent-ink);
     border: none;
     border-radius: 999px;
     padding: 0.85rem 1.2rem;
@@ -499,7 +557,7 @@
     letter-spacing: -0.005em;
     transition: transform 0.1s ease, opacity 0.12s ease;
   }
-  .big-btn:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--rule); }
+  .big-btn:hover:not(:disabled) { box-shadow: 4px 4px 0 var(--ink); }
   .big-btn:disabled { opacity: 0.45; cursor: progress; }
   .side-hint { font-size: 0.82rem; color: var(--ink-2); line-height: 1.45; margin-top: 0.75rem; }
 
@@ -569,7 +627,7 @@
     text-transform: uppercase;
   }
   .theme-switch button + button { border-left: var(--line) solid var(--rule); }
-  .theme-switch button[aria-pressed="true"] { background: var(--inverse-bg); color: var(--inverse-ink); }
+  .theme-switch button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
   #scrim {
     position: fixed;
     inset: var(--header-h) 0 0 0;
@@ -642,11 +700,13 @@
     <div id="scrim"></div>
 
     <main id="main">
+      <canvas id="field" aria-hidden="true"></canvas>
+      <div class="field-caption" aria-hidden="true">each block is a cache cell<br>lit blocks = live requests</div>
       <div id="scroll-region">
         <div id="thread">
           <section class="empty-state" id="empty-state">
             <div class="eyebrow">Continuous batching · OpenAI-compatible</div>
-            <h1 class="hero">Many requests.<br><em>One batch.</em> Live.</h1>
+            <h1 class="hero" id="hero">Many requests.<br><em>One batch.</em> Live.</h1>
             <p class="lede">
               Every message streams through <code>/v1/chat/completions</code> and shares a
               slot-addressed KV cache with whatever else is running. Send a few at once
@@ -749,6 +809,8 @@
 (() => {
   "use strict";
 
+  const gsap = window.gsap || null;
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const el = (id) => document.getElementById(id);
   const scrollRegion = el("scroll-region");
   const thread = el("thread");
@@ -782,6 +844,10 @@
       panel.classList.add("open");
       btn.setAttribute("aria-expanded", "true");
       scrim.classList.add("show");
+      if (gsap && !REDUCED) {
+        gsap.from(panel.querySelectorAll(".panel-section, .param-row, .theme-switch"),
+          { y: 14, opacity: 0, duration: 0.4, stagger: 0.04, ease: "power2.out", delay: 0.08, clearProps: "all" });
+      }
     }
   }
   settingsToggle.addEventListener("click", () => togglePanel(settings, settingsToggle));
@@ -877,7 +943,12 @@
     if (abortController) abortController.abort();
     history.length = 0;
     thread.querySelectorAll(".turn").forEach((n) => n.remove());
-    if (!document.getElementById("empty-state")) thread.prepend(emptyState);
+    if (!document.getElementById("empty-state")) {
+      thread.prepend(emptyState);
+      introEmpty();
+    }
+    document.body.classList.remove("chatting");
+    window.dispatchEvent(new CustomEvent("slotserve:reset"));
     promptEl.value = "";
     autosize();
     sendBtn.disabled = true;
@@ -974,6 +1045,13 @@
     if (role === "user") bubble.textContent = text;
     turn.append(who, bubble);
     thread.appendChild(turn);
+    document.body.classList.add("chatting");
+    window.dispatchEvent(new CustomEvent("slotserve:chat", { detail: { role } }));
+    if (gsap && !REDUCED) {
+      turn.style.animation = "none";
+      gsap.from(turn, { y: 18, opacity: 0, duration: 0.45, ease: "power3.out" });
+      if (role === "user") gsap.from(bubble, { scale: 0.92, transformOrigin: "100% 100%", duration: 0.45, ease: "back.out(2)" });
+    }
     scrollToBottom(true);
     return { turn, bubble };
   }
@@ -997,6 +1075,18 @@
     if (n >= 1e4) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "k";
     return String(Math.round(n));
   };
+
+  // Numbers glide to their new value instead of jumping (GSAP when present).
+  function countTo(node, value, format = (n) => String(Math.round(n))) {
+    value = Number(value) || 0;
+    const from = Number(node.dataset.v ?? value);
+    node.dataset.v = value;
+    if (!gsap || from === value || REDUCED) { node.textContent = format(value); return; }
+    const o = { v: from };
+    node._tween?.kill();
+    node._tween = gsap.to(o, { v: value, duration: 0.6, ease: "power2.out",
+      onUpdate: () => (node.textContent = format(o.v)) });
+  }
 
   // Throughput history for the sparkline, sampled by wall clock so it reads
   // the same whether we're polling fast (busy) or slow (idle).
@@ -1027,16 +1117,17 @@
       if (!res.ok) return;
       const s = await res.json();
       const tps = s.tokens_per_second ?? 0;
-      statGrid.querySelector('[data-k="running"]').textContent = s.running;
-      statGrid.querySelector('[data-k="waiting"]').textContent = s.waiting;
-      statGrid.querySelector('[data-k="tps"]').textContent = Math.round(tps);
-      statGrid.querySelector('[data-k="kv"]').textContent = Math.round(s.kv_cache_mb ?? 0);
-      el("t-tokens").textContent = compact(s.total_output_tokens);
-      el("t-steps").textContent = compact(s.total_steps);
+      countTo(statGrid.querySelector('[data-k="running"]'), s.running);
+      countTo(statGrid.querySelector('[data-k="waiting"]'), s.waiting);
+      countTo(statGrid.querySelector('[data-k="tps"]'), tps);
+      countTo(statGrid.querySelector('[data-k="kv"]'), s.kv_cache_mb ?? 0);
+      countTo(el("t-tokens"), s.total_output_tokens, compact);
+      countTo(el("t-steps"), s.total_steps, compact);
       el("t-peak").textContent = s.max_batch_seen ?? 0;
       el("slot-util").textContent = `${Math.round((s.slot_utilization ?? 0) * 100)}% used`;
       drawSpark(tps);
       renderSlots(s);
+      window.dispatchEvent(new CustomEvent("slotserve:stats", { detail: s }));
       return s;
     } catch { /* server not up yet */ }
   }
@@ -1122,6 +1213,58 @@
     pollTimer = setTimeout(pollStats, busy || burstBtn.disabled || abortController ? 250 : 1500);
   }
   const kickPoll = () => setTimeout(pollStats, 60);
+
+  // ------------------------------------------------------------- motion
+  // Split the hero into words once so GSAP can lift them in line by line.
+  const hero = el("hero");
+  if (hero) {
+    const wrapWords = (node) => {
+      [...node.childNodes].forEach((child) => {
+        if (child.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          child.textContent.split(/(\s+)/).forEach((part) => {
+            if (!part) return;
+            if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(part)); return; }
+            const w = document.createElement("span");
+            w.className = "w";
+            const inner = document.createElement("span");
+            inner.textContent = part;
+            w.appendChild(inner);
+            frag.appendChild(w);
+          });
+          child.replaceWith(frag);
+        } else if (child.nodeType === 1 && child.tagName !== "BR") {
+          wrapWords(child);
+        }
+      });
+    };
+    wrapWords(hero);
+  }
+
+  function introEmpty() {
+    if (!gsap || REDUCED || !document.getElementById("empty-state")) return;
+    const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
+    tl.from(".empty-state .eyebrow", { y: 12, opacity: 0, duration: 0.5 })
+      .from("#hero .w > span", { yPercent: 110, duration: 0.9, stagger: 0.06 }, "-=0.25")
+      .fromTo("#hero em", { "--mark": 0 }, { "--mark": 1, duration: 0.7, ease: "power2.inOut" }, "-=0.35")
+      .from(".lede", { y: 16, opacity: 0, duration: 0.6 }, "-=0.5")
+      .from(".suggestion", { y: 20, opacity: 0, duration: 0.55, stagger: 0.08, clearProps: "transform,opacity" }, "-=0.35");
+  }
+
+  if (gsap && !REDUCED) {
+    gsap.from("header .wordmark, header .nav-btn", { y: -16, opacity: 0, duration: 0.6, stagger: 0.05, ease: "power3.out", clearProps: "all" });
+    gsap.from("#engine .panel-section", { x: 30, opacity: 0, duration: 0.7, stagger: 0.1, ease: "power3.out", delay: 0.2, clearProps: "all" });
+    gsap.from("#composer-inner", { y: 30, opacity: 0, duration: 0.7, ease: "power3.out", delay: 0.4, clearProps: "all" });
+    introEmpty();
+    // A little magnetism on the big buttons.
+    document.querySelectorAll(".big-btn, #send").forEach((b) => {
+      b.addEventListener("pointermove", (e) => {
+        const r = b.getBoundingClientRect();
+        gsap.to(b, { x: (e.clientX - r.left - r.width / 2) * 0.12, y: (e.clientY - r.top - r.height / 2) * 0.25, duration: 0.3 });
+      });
+      b.addEventListener("pointerleave", () => gsap.to(b, { x: 0, y: 0, duration: 0.5, ease: "elastic.out(1, 0.4)" }));
+    });
+  }
 
   refreshHealth();
   pollStats();
@@ -1245,6 +1388,162 @@
 
   stopBtn.addEventListener("click", () => abortController?.abort());
 })();
+</script>
+
+<!-- ------------------------------------------------------------------
+     3D slot field. A grid of instanced blocks rolls like a slow wave;
+     blocks light up in the accent colour for every request the engine is
+     running, and the wave speeds up with tokens/s. Decorative only: if
+     WebGL or the module fails, the page simply has no background.
+------------------------------------------------------------------- -->
+<script type="module">
+import * as THREE from "./vendor/three.module.min.js";
+
+const canvas = document.getElementById("field");
+const main = document.getElementById("main");
+const gsap = window.gsap;
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
+} catch (e) {
+  canvas.remove();
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 200);
+const COLS = 30, ROWS = 18, GAP = 1.08;
+const COUNT = COLS * ROWS;
+
+const geo = new THREE.BoxGeometry(0.86, 1, 0.86);
+geo.translate(0, 0.5, 0); // grow from the floor
+const mat = new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0.0 });
+const mesh = new THREE.InstancedMesh(geo, mat, COUNT);
+mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(mesh);
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.1);
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(-8, 18, 10);
+scene.add(hemi, sun);
+
+const cells = [];
+for (let r = 0; r < ROWS; r++) {
+  for (let c = 0; c < COLS; c++) {
+    const x = (c - (COLS - 1) / 2) * GAP;
+    const z = (r - (ROWS - 1) / 2) * GAP;
+    cells.push({ x, z, d: Math.hypot(x, z), lit: 0, target: 0, seed: Math.random() * 6.28 });
+  }
+}
+const maxD = Math.max(...cells.map((c) => c.d));
+
+// State that GSAP tweens: intro rise, energy (tokens/s), dim when chatting.
+const state = { rise: REDUCED ? 1 : 0, energy: 0.15, opacity: 0, mx: 0, my: 0, pmx: 0, pmy: 0 };
+
+const base = new THREE.Color(), hi = new THREE.Color(), tmp = new THREE.Color(), fogC = new THREE.Color();
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  base.set(cs.getPropertyValue("--box").trim() || "#e6dfcd");
+  hi.set(cs.getPropertyValue("--box-hi").trim() || "#f2d64b");
+  fogC.set(cs.getPropertyValue("--bg").trim() || "#f3efe4");
+  scene.fog = new THREE.Fog(fogC, 22, 46);
+  const dark = cs.colorScheme === "dark" || cs.getPropertyValue("color-scheme").trim() === "dark";
+  hemi.intensity = dark ? 0.55 : 1.1;
+  sun.intensity = dark ? 1.1 : 1.6;
+}
+readTheme();
+new MutationObserver(readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", readTheme);
+
+function resize() {
+  const w = main.clientWidth, h = main.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  // Keep the field in the lower part of the view so the headline stays readable.
+  const narrow = w < 640;
+  camera.position.set(0, narrow ? 21 : 15, narrow ? 30 : 24);
+  camera.lookAt(0, narrow ? 9 : 7.5, 0);
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(main);
+resize();
+
+// Light up one random cell per running request (several per slot so it reads).
+function setLive(running, waiting) {
+  const wantLit = Math.min(COUNT, running * 7 + waiting * 2);
+  const litNow = cells.filter((c) => c.target > 0);
+  if (litNow.length > wantLit) {
+    litNow.sort(() => Math.random() - 0.5).slice(0, litNow.length - wantLit).forEach((c) => (c.target = 0));
+  } else {
+    const dark = cells.filter((c) => c.target === 0).sort(() => Math.random() - 0.5);
+    dark.slice(0, wantLit - litNow.length).forEach((c) => (c.target = 1));
+  }
+}
+
+window.addEventListener("slotserve:stats", (e) => {
+  const s = e.detail || {};
+  setLive(s.running || 0, s.waiting || 0);
+  const energy = 0.15 + Math.min(1, (s.tokens_per_second || 0) / 120) * 0.85;
+  if (gsap) gsap.to(state, { energy, duration: 1.2, ease: "power2.out" });
+  else state.energy = energy;
+});
+const dimTo = (v) => gsap ? gsap.to(state, { opacity: v, duration: 0.8, ease: "power2.out" }) : (state.opacity = v);
+window.addEventListener("slotserve:chat", () => dimTo(0.28));
+window.addEventListener("slotserve:reset", () => dimTo(1));
+window.addEventListener("pointermove", (e) => {
+  state.mx = (e.clientX / window.innerWidth) * 2 - 1;
+  state.my = (e.clientY / window.innerHeight) * 2 - 1;
+});
+
+// Intro: fade in, then blocks rise outward from the centre.
+if (gsap && !REDUCED) {
+  gsap.to(state, { opacity: 1, duration: 1.2, ease: "power2.out" });
+  gsap.to(state, { rise: 1, duration: 2.2, ease: "power3.out", delay: 0.15 });
+} else {
+  state.opacity = 1;
+}
+
+const m = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3();
+const clock = new THREE.Clock();
+let t = 0;
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  t += dt * (0.35 + state.energy * 1.6);
+  state.pmx += (state.mx - state.pmx) * 0.04;
+  state.pmy += (state.my - state.pmy) * 0.04;
+
+  for (let i = 0; i < COUNT; i++) {
+    const c = cells[i];
+    c.lit += (c.target - c.lit) * 0.08;
+    // Rise ripples outward from the centre during the intro.
+    const local = THREE.MathUtils.clamp(state.rise * 1.6 - (c.d / maxD) * 0.6, 0, 1);
+    const wave = Math.sin(c.x * 0.32 + t) * Math.cos(c.z * 0.38 - t * 0.8) * 0.5 + 0.5;
+    const h = (0.25 + wave * (0.6 + state.energy * 1.8) + c.lit * (2.2 + Math.sin(t * 3 + c.seed) * 0.4)) * local + 0.02;
+    p.set(c.x, 0, c.z);
+    sc.set(1, h, 1);
+    m.compose(p, q, sc);
+    mesh.setMatrixAt(i, m);
+    tmp.copy(base).lerp(hi, c.lit);
+    mesh.setColorAt(i, tmp);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.instanceColor.needsUpdate = true;
+
+  mesh.rotation.y = -0.18 + state.pmx * 0.12 + Math.sin(t * 0.05) * 0.04;
+  mesh.rotation.x = state.pmy * 0.04;
+  canvas.style.opacity = state.opacity;
+  renderer.render(scene, camera);
+}
+
+if (REDUCED) {
+  frame();
+  window.addEventListener("slotserve:stats", () => requestAnimationFrame(frame));
+} else {
+  renderer.setAnimationLoop(frame);
+}
 </script>
 </body>
 </html>
