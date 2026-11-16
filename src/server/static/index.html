@@ -304,10 +304,6 @@
     .arch-box { border-right: none; border-bottom: var(--line) solid var(--rule); }
     .arch-box::after { display: none; }
   }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-    html { scroll-behavior: auto; }
-  }
 </style>
 </head>
 <body>
@@ -573,7 +569,9 @@ python -m src.server.app --max-slots 4
 (() => {
   "use strict";
   const gsap = window.gsap || null;
-  const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Motion is the point of this site, so it plays even when the OS asks for
+  // reduced motion. Add ?still to the URL for a static version.
+  const REDUCED = new URLSearchParams(location.search).has("still");
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 

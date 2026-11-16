@@ -6,7 +6,9 @@ import * as THREE from "./vendor/three.module.min.js";
 
 export function mountField(canvas, main, opts = {}) {
   const gsap = window.gsap;
-  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Motion is the point of this site, so it plays even when the OS asks for
+  // reduced motion. Add ?still to the URL for a static version.
+  const REDUCED = new URLSearchParams(location.search).has("still");
 
   let renderer;
   try {

@@ -779,9 +779,6 @@
     .suggestion { grid-template-columns: 2.2rem 1fr auto; }
     #settings { border-left: none; border-radius: 0; }
   }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-  }
 </style>
 </head>
 <body>
@@ -923,7 +920,9 @@
   "use strict";
 
   const gsap = window.gsap || null;
-  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Motion is the point of this site, so it plays even when the OS asks for
+  // reduced motion. Add ?still to the URL for a static version.
+  const REDUCED = new URLSearchParams(location.search).has("still");
   const el = (id) => document.getElementById(id);
   const scrollRegion = el("scroll-region");
   const thread = el("thread");
