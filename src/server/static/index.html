@@ -14,6 +14,118 @@
      Three.js r160 (MIT). Served locally so the page works without a CDN. -->
 <script src="vendor/gsap.min.js"></script>
 <script>
+// ---------------------------------------------------------------- demo mode
+// When the page is hosted without the Python engine (for example as a static
+// site on Vercel), there is no /health. In that case a small simulated engine
+// answers /health, /stats and the two completion endpoints in the browser, so
+// the design and the slot animation can still be shown. ?demo=1 forces it.
+(() => {
+  const realFetch = window.fetch.bind(window);
+  const MAX_SLOTS = 4;
+  const slots = new Array(MAX_SLOTS).fill(null);
+  const queue = [];
+  let totalOut = 0, steps = 0, peak = 0, tps = 0, windowTokens = 0, lastTick = performance.now();
+  let demo = null;
+
+  function admit() {
+    for (let i = 0; i < MAX_SLOTS && queue.length; i++) {
+      if (!slots[i]) { const r = queue.shift(); r.status = "prefill"; slots[i] = r; }
+    }
+  }
+  setInterval(() => {
+    if (!demo) return;
+    let produced = 0;
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const r = slots[i];
+      if (!r) continue;
+      if (r.status === "prefill") { r.status = "decode"; continue; }
+      const n = 1 + (Math.random() < 0.5 ? 1 : 0);
+      r.generated = Math.min(r.max_tokens, r.generated + n);
+      produced += n;
+      r.onTokens?.(n);
+      if (r.generated >= r.max_tokens) { slots[i] = null; r.onDone?.(); }
+    }
+    if (produced) steps++;
+    totalOut += produced; windowTokens += produced;
+    peak = Math.max(peak, slots.filter(Boolean).length);
+    admit();
+    const now = performance.now();
+    if (now - lastTick > 1000) { tps = windowTokens / ((now - lastTick) / 1000); windowTokens = 0; lastTick = now; }
+  }, 60);
+
+  const json = (o) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json" } });
+  function stats() {
+    const running = slots.filter(Boolean).length;
+    return {
+      running, waiting: queue.length, tokens_per_second: tps, kv_cache_mb: 6,
+      total_output_tokens: totalOut, total_steps: steps, max_batch_seen: peak,
+      slot_utilization: running / MAX_SLOTS, max_slots: MAX_SLOTS,
+      slots: slots.map((r) => r && { request_id: r.id, status: r.status, generated: r.generated, max_tokens: r.max_tokens }),
+    };
+  }
+  const ANSWERS = [
+    [/batch/i, "**Continuous batching** lets a new request join the running batch the moment a slot frees up, instead of waiting for the whole batch to finish.\n\n### Why it matters\n- Short requests don't wait behind long ones\n- The GPU stays busy, so throughput goes up\n- Latency stays predictable under load\n\n```python\nwhile True:\n    engine.admit(queue)   # fill free slots\n    engine.step()         # one decode step for every slot\n```"],
+    [/haiku|poem/i, "Cache lines fill and spill,\nthe last token finds no room —\nevict, and begin."],
+    [/hard|problem/i, "The three hardest problems in LLM serving:\n\n1. **Memory** – the KV cache grows with every token and every user.\n2. **Scheduling** – mixing short and long requests without starving either.\n3. **Latency vs throughput** – bigger batches are efficient but slower per user."],
+    [/./, "This is the **demo** build of slotserve, running entirely in your browser. Replies are canned, but the slots, queue and throughput you see are simulated with the same rules as the real engine.\n\nRun the Python server locally to chat with a real model."],
+  ];
+  function streamChat(body) {
+    const last = (body.messages || []).slice(-1)[0]?.content || "";
+    const text = ANSWERS.find(([re]) => re.test(last))[1];
+    const pieces = text.match(/\S+\s*|\s+/g) || [text];
+    const enc = new TextEncoder();
+    return new Response(new ReadableStream({
+      start(ctrl) {
+        let i = 0;
+        const req = { id: "demo-" + Math.random().toString(36).slice(2, 8), generated: 0, max_tokens: pieces.length, status: "waiting" };
+        req.onTokens = (n) => {
+          for (let k = 0; k < n && i < pieces.length; k++, i++) {
+            ctrl.enqueue(enc.encode("data: " + JSON.stringify({ choices: [{ delta: { content: pieces[i] } }] }) + "\n\n"));
+          }
+        };
+        req.onDone = () => {
+          ctrl.enqueue(enc.encode("data: " + JSON.stringify({ choices: [{ delta: {}, finish_reason: "stop" }] }) + "\n\ndata: [DONE]\n\n"));
+          ctrl.close();
+        };
+        queue.push(req); admit();
+      },
+    }), { headers: { "content-type": "text/event-stream" } });
+  }
+  function completion(body) {
+    return new Promise((resolve) => {
+      queue.push({ id: "demo", generated: 0, max_tokens: body.max_tokens || 32, status: "waiting", onDone: () => resolve(json({ choices: [{ text: "" }] })) });
+      admit();
+    });
+  }
+
+  const ready = (async () => {
+    if (new URLSearchParams(location.search).has("demo")) return (demo = true);
+    try {
+      const r = await realFetch("/health", { cache: "no-store" });
+      const ok = r.ok && (r.headers.get("content-type") || "").includes("json");
+      return (demo = !ok);
+    } catch { return (demo = true); }
+  })();
+
+  window.fetch = async (input, init = {}) => {
+    const url = typeof input === "string" ? input : input.url;
+    const path = url.startsWith("/") ? url : null;
+    if (!path || !/^\/(health|stats|v1\/)/.test(path)) return realFetch(input, init);
+    await ready;
+    if (!demo) return realFetch(input, init);
+    if (init.signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    if (path === "/health") return json({ status: "ok", demo: true });
+    if (path === "/stats") return json(stats());
+    const body = init.body ? JSON.parse(init.body) : {};
+    if (path === "/v1/chat/completions") return streamChat(body);
+    if (path === "/v1/completions") return completion(body);
+    return new Response("not found", { status: 404 });
+  };
+  window.slotserveDemo = ready;
+})();
+</script>
+
+<script>
   // Apply the saved theme before first paint so there is no flash.
   try {
     const t = localStorage.getItem("slotserve-theme");
@@ -1062,7 +1174,7 @@
       const res = await fetch("/health");
       if (!res.ok) throw new Error();
       connDot.className = "dot ok";
-      connLabel.textContent = "live";
+      connLabel.textContent = (await window.slotserveDemo) ? "demo" : "live";
     } catch {
       connDot.className = "dot bad";
       connLabel.textContent = "offline";
