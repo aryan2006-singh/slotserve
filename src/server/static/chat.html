@@ -128,9 +128,10 @@
 <script>
   // Apply the saved theme before first paint so there is no flash.
   try {
+    // Light is the default; dark only when picked, OS theme only for "system".
     const t = localStorage.getItem("slotserve-theme");
-    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-  } catch { /* storage blocked: follow the OS */ }
+    if (t !== "system") document.documentElement.dataset.theme = t === "dark" ? "dark" : "light";
+  } catch { document.documentElement.dataset.theme = "light"; }
 </script>
 <style>
   /* ----------------------------------------------------------- tokens */
@@ -977,15 +978,14 @@
     else delete document.documentElement.dataset.theme;
     themeButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeChoice === choice)));
   }
-  let savedTheme = "system";
-  try { savedTheme = localStorage.getItem("slotserve-theme") || "system"; } catch {}
+  let savedTheme = "light";
+  try { savedTheme = localStorage.getItem("slotserve-theme") || "light"; } catch {}
   applyTheme(savedTheme);
   themeButtons.forEach((b) => b.addEventListener("click", () => {
     const choice = b.dataset.themeChoice;
     applyTheme(choice);
     try {
-      if (choice === "system") localStorage.removeItem("slotserve-theme");
-      else localStorage.setItem("slotserve-theme", choice);
+      localStorage.setItem("slotserve-theme", choice);
     } catch {}
   }));
 

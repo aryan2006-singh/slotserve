@@ -15,9 +15,10 @@
 <script src="vendor/ScrollTrigger.min.js"></script>
 <script>
   try {
+    // Light is the default; dark only when picked (or "system" chosen in chat settings).
     const t = localStorage.getItem("slotserve-theme");
-    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
-  } catch {}
+    if (t !== "system") document.documentElement.dataset.theme = t === "dark" ? "dark" : "light";
+  } catch { document.documentElement.dataset.theme = "light"; }
 </script>
 <style>
   :root {
